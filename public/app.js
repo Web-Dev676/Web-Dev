@@ -7,14 +7,18 @@ if (logoutBtn) {
         try {
             const response = await fetch('/api/logout', {
                 method: 'POST',
-                credentials: 'same-origin'
+                credentials: 'include' // Important for cross-origin requests
             });
+            
             const data = await response.json();
-            if (data.success) {
-                window.location.href = 'login.html';
+            if (response.ok && data.success) {
+                window.location.href = '/login.html';
+            } else {
+                alert(data.error || 'Logout failed. Please try again.');
             }
         } catch (error) {
             console.error('Logout failed:', error);
+            alert('Connection error. Please check your internet connection and try again.');
         }
     });
 }

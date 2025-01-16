@@ -11,23 +11,23 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include', // Important for cross-origin requests
                     body: JSON.stringify({ email, password }),
                 });
 
                 const data = await response.json();
 
-                if (data.success) {
-                    window.location.href = '/';
+                if (response.ok && data.success) {
+                    window.location.href = '/index.html';
                 } else {
                     alert(data.error || 'Login failed. Please try again.');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                alert('An error occurred during login. Please try again.');
+                alert('Connection error. Please check your internet connection and try again.');
             }
         });
     }
@@ -45,23 +45,23 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
-                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include', // Important for cross-origin requests
                     body: JSON.stringify({ username, email, password }),
                 });
 
                 const data = await response.json();
 
-                if (data.success) {
-                    window.location.href = '/';
+                if (response.ok && data.success) {
+                    window.location.href = '/index.html';
                 } else {
                     alert(data.error || 'Signup failed. Please try again.');
                 }
             } catch (error) {
                 console.error('Signup error:', error);
-                alert('An error occurred during signup. Please try again.');
+                alert('Connection error. Please check your internet connection and try again.');
             }
         });
     }

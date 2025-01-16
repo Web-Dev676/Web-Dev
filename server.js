@@ -16,7 +16,10 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB Atlas!'))
     .catch(err => console.error('Error connecting to MongoDB Atlas:', err));
 
-// Session configuration
+// Trust proxy - Required for Render
+app.set('trust proxy', 1);
+
+// Session configuration with production settings
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
@@ -28,28 +31,31 @@ app.use(session({
     }),
     cookie: { 
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Always use secure cookies
         httpOnly: true,
+        sameSite: 'none' // Required for cross-site cookie setting
     }
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Authentication middleware
+// Authentication middleware with better error handling
 const checkAuth = (req, res, next) => {
     if (!req.session || !req.session.userId) {
+        if (req.xhr || req.path.startsWith('/api/')) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
         return res.redirect('/login.html');
     }
     next();
 };
 
-// Handle direct access to index.html
+// Protected routes
 app.get('/index.html', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Root route - redirect to login if not authenticated, index if authenticated
 app.get('/', (req, res) => {
     if (!req.session || !req.session.userId) {
         res.redirect('/login.html');
@@ -58,10 +64,10 @@ app.get('/', (req, res) => {
     }
 });
 
-// Serve static files - this should come after the protected routes
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// User Schema
+// User Schema remains the same
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -70,11 +76,15 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Login route
+// Login route with detailed error responses
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
@@ -89,17 +99,17 @@ app.post('/api/login', async (req, res) => {
         req.session.save((err) => {
             if (err) {
                 console.error('Session save error:', err);
-                return res.status(500).json({ error: 'Login failed' });
+                return res.status(500).json({ error: 'Session creation failed' });
             }
             res.json({ success: true });
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
+        res.status(500).json({ error: 'Server error during login' });
     }
 });
 
-// Registration route
+// Registration route with detailed error responses
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -121,23 +131,26 @@ app.post('/api/register', async (req, res) => {
         req.session.save((err) => {
             if (err) {
                 console.error('Session save error:', err);
-                return res.status(500).json({ error: 'Registration failed' });
+                return res.status(500).json({ error: 'Session creation failed' });
             }
             res.status(201).json({ success: true });
         });
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).json({ error: 'Registration failed' });
+        res.status(500).json({ error: 'Server error during registration' });
     }
 });
 
-// Logout route
 app.post('/api/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
             return res.status(500).json({ error: 'Logout failed' });
         }
-        res.clearCookie('connect.sid');
+        res.clearCookie('connect.sid', {
+            secure: true,
+            sameSite: 'none',
+            httpOnly: true
+        });
         res.json({ success: true });
     });
 });
