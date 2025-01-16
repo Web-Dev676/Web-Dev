@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB Atlas!'))
-  .catch(err => console.error('Error connecting to MongoDB Atlas:', err));
+    .then(() => console.log('Connected to MongoDB Atlas!'))
+    .catch(err => console.error('Error connecting to MongoDB Atlas:', err));
 
 // Session configuration
 app.use(session({
@@ -27,7 +27,7 @@ app.use(session({
         autoRemoveInterval: 10
     }),
     cookie: { 
-        maxAge: null,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
     }
@@ -39,15 +39,17 @@ app.use(express.urlencoded({ extended: true }));
 // Authentication middleware
 const checkAuth = (req, res, next) => {
     if (!req.session || !req.session.userId) {
-        if (req.xhr || req.path.startsWith('/api/')) {
-            return res.status(401).json({ error: 'Not authenticated' });
-        }
         return res.redirect('/login.html');
     }
     next();
 };
 
-// Root route handler - must be before static middleware
+// Handle direct access to index.html
+app.get('/index.html', checkAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Root route - redirect to login if not authenticated, index if authenticated
 app.get('/', (req, res) => {
     if (!req.session || !req.session.userId) {
         res.redirect('/login.html');
@@ -56,12 +58,7 @@ app.get('/', (req, res) => {
     }
 });
 
-// Protected routes - must be before static middleware
-app.get('/index.html', checkAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Serve static files from public directory
+// Serve static files - this should come after the protected routes
 app.use(express.static(path.join(__dirname, 'public')));
 
 // User Schema
@@ -73,7 +70,36 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Auth API routes
+// Login route
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        req.session.userId = user._id;
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Login failed' });
+            }
+            res.json({ success: true });
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// Registration route
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -92,35 +118,20 @@ app.post('/api/register', async (req, res) => {
         await user.save();
         
         req.session.userId = user._id;
-        res.status(201).json({ success: true });
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Registration failed' });
+            }
+            res.status(201).json({ success: true });
+        });
     } catch (error) {
         console.error('Registration error:', error);
         res.status(500).json({ error: 'Registration failed' });
     }
 });
 
-app.post('/api/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        req.session.userId = user._id;
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
-    }
-});
-
+// Logout route
 app.post('/api/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {

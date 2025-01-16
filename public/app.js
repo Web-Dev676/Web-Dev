@@ -6,7 +6,8 @@ if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         try {
             const response = await fetch('/api/logout', {
-                method: 'POST'
+                method: 'POST',
+                credentials: 'same-origin'
             });
             const data = await response.json();
             if (data.success) {
