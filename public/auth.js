@@ -1,4 +1,3 @@
-// Login Form Handler
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
@@ -14,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'include', // Important for cross-origin requests
+                    credentials: 'include',
                     body: JSON.stringify({ email, password }),
                 });
 
@@ -32,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Signup Form Handler
     const signupForm = document.getElementById('signupForm');
     if (signupForm) {
         signupForm.addEventListener('submit', async (e) => {
@@ -48,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'include', // Important for cross-origin requests
+                    credentials: 'include', 
                     body: JSON.stringify({ username, email, password }),
                 });
 

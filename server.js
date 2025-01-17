@@ -9,17 +9,14 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MongoDB connection
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB Atlas!'))
     .catch(err => console.error('Error connecting to MongoDB Atlas:', err));
 
-// Trust proxy - Required for Render
 app.set('trust proxy', 1);
 
-// Session configuration with production settings
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
@@ -30,17 +27,16 @@ app.use(session({
         autoRemoveInterval: 10
     }),
     cookie: { 
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        secure: true, // Always use secure cookies
+        maxAge: 24 * 60 * 60 * 1000,
+        secure: true, 
         httpOnly: true,
-        sameSite: 'none' // Required for cross-site cookie setting
+        sameSite: 'none' 
     }
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Authentication middleware with better error handling
 const checkAuth = (req, res, next) => {
     if (!req.session || !req.session.userId) {
         if (req.xhr || req.path.startsWith('/api/')) {
@@ -51,7 +47,6 @@ const checkAuth = (req, res, next) => {
     next();
 };
 
-// Protected routes
 app.get('/index.html', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -64,10 +59,8 @@ app.get('/', (req, res) => {
     }
 });
 
-// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// User Schema remains the same
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -76,7 +69,6 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Login route with detailed error responses
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -109,7 +101,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Registration route with detailed error responses
+
 app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;

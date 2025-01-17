@@ -1,13 +1,11 @@
-// DOM Elements
 const logoutBtn = document.getElementById('logoutBtn');
 
-// Add logout functionality
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         try {
             const response = await fetch('/api/logout', {
                 method: 'POST',
-                credentials: 'include' // Important for cross-origin requests
+                credentials: 'include' 
             });
             
             const data = await response.json();
